@@ -1,12 +1,21 @@
 import os
 from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    MessageHandler,
+    ContextTypes,
+    filters
+)
 
-TOKEN = os.getenv("7891053844:AAGu0S7w_YmkFcvPigH4cJ-lTExySck6OJ8")
-ADMIN_ID = int(os.getenv("7363981707"))
+# Берём значения из Render (Environment Variables)
+TOKEN = os.getenv("BOT_TOKEN")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
+# Храним состояние: кто сейчас пишет сообщение
 waiting_for_message = set()
 
+# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [["✉️ Написать"]]
     await update.message.reply_text(
@@ -14,13 +23,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
 
+# Нажали кнопку "Написать"
 async def start_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    waiting_for_message.add(update.message.from_user.id)
+    user_id = update.message.from_user.id
+    waiting_for_message.add(user_id)
     await update.message.reply_text("✍️ Введите ваше сообщение и отправьте его.")
 
+# Пользователь прислал текст
 async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
 
+    # если это админ — обрабатываем отдельно
     if user.id == ADMIN_ID:
         if update.message.reply_to_message:
             original = update.message.reply_to_message.text
@@ -32,6 +45,7 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                 )
         return
 
+    # если пользователь не нажал "Написать" — игнор
     if user.id not in waiting_for_message:
         return
 
@@ -49,11 +63,13 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
+
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.Regex("^✉️ Написать$"), start_message))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_message))
+
     print("Бот запущен")
     app.run_polling()
 
-if __name__ == "__main__":
+if name == "__main__":
     main()
