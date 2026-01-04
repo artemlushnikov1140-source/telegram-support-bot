@@ -1,21 +1,18 @@
 import os
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder,
+    Application,
     CommandHandler,
     MessageHandler,
     ContextTypes,
     filters
 )
 
-# Берём значения из Render (Environment Variables)
 TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
-# Храним состояние: кто сейчас пишет сообщение
 waiting_for_message = set()
 
-# /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [["✉️ Написать"]]
     await update.message.reply_text(
@@ -23,17 +20,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=ReplyKeyboardMarkup(keyboard, resize_keyboard=True)
     )
 
-# Нажали кнопку "Написать"
 async def start_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.message.from_user.id
-    waiting_for_message.add(user_id)
+    waiting_for_message.add(update.message.from_user.id)
     await update.message.reply_text("✍️ Введите ваше сообщение и отправьте его.")
 
-# Пользователь прислал текст
 async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = update.message.from_user
 
-    # если это админ — обрабатываем отдельно
     if user.id == ADMIN_ID:
         if update.message.reply_to_message:
             original = update.message.reply_to_message.text
@@ -45,7 +38,6 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
                 )
         return
 
-    # если пользователь не нажал "Написать" — игнор
     if user.id not in waiting_for_message:
         return
 
@@ -62,7 +54,7 @@ async def handle_user_message(update: Update, context: ContextTypes.DEFAULT_TYPE
     await update.message.reply_text("✅ Сообщение отправлено. Ожидайте ответа.")
 
 def main():
-    app = ApplicationBuilder().token(TOKEN).build()
+    app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.Regex("^✉️ Написать$"), start_message))
@@ -73,4 +65,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
